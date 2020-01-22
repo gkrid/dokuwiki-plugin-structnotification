@@ -7,6 +7,9 @@
  */
 
 // must be run within Dokuwiki
+use dokuwiki\plugin\struct\meta\Search;
+use dokuwiki\plugin\struct\meta\Value;
+
 if (!defined('DOKU_INC')) {
     die();
 }
@@ -23,29 +26,154 @@ class action_plugin_structnotification_notification extends DokuWiki_Action_Plug
      */
     public function register(Doku_Event_Handler $controller)
     {
-        $controller->register_hook('PLUGIN_NOTIFICATION_REGISTER_SOURCE', 'FIXME', $this, 'handle_plugin_notification_register_source');        $controller->register_hook('PLUGIN_NOTIFICATION_GATHER', 'FIXME', $this, 'handle_plugin_notification_gather');        $controller->register_hook('PLUGIN_NOTIFICATION_CACHE_DEPENDENCIES', 'FIXME', $this, 'handle_plugin_notification_cache_dependencies');
-   
+        $controller->register_hook('PLUGIN_NOTIFICATION_REGISTER_SOURCE', 'AFTER', $this, 'add_notifications_source');
+        $controller->register_hook('PLUGIN_NOTIFICATION_GATHER', 'AFTER', $this, 'add_notifications');
+        $controller->register_hook('PLUGIN_NOTIFICATION_CACHE_DEPENDENCIES', 'AFTER', $this, 'add_notification_cache_dependencies');
+
+
+    }
+
+    public function add_notifications_source(Doku_Event $event)
+    {
+        $event->data[] = 'structnotification';
+    }
+
+    public function add_notification_cache_dependencies(Doku_Event $event)
+    {
+        if (!in_array('structnotification', $event->data['plugins'])) return;
+
+        try {
+            /** @var \helper_plugin_structnotification_db $db_helper */
+            $db_helper = plugin_load('helper', 'structnotification_db');
+            $sqlite = $db_helper->getDB();
+            $event->data['dependencies'][] = $sqlite->getAdapter()->getDbFile();
+        } catch (Exception $e) {
+            msg($e->getMessage(), -1);
+            return;
+        }
+    }
+
+    protected function getValueByLabel($values, $label)
+    {
+        /* @var Value $value */
+        foreach ($values as $value) {
+            $colLabel = $value->getColumn()->getLabel();
+            if ($colLabel == $label) {
+                return $value->getRawValue();
+            }
+        }
+        //nothing found
+        throw new Exception("column: $label not found in values");
+    }
+
+
+    public function add_notifications(Doku_Event $event)
+    {
+        if (!in_array('structnotification', $event->data['plugins'])) return;
+
+        try {
+            /** @var \helper_plugin_structnotification_db$db_helper */
+            $db_helper = plugin_load('helper', 'structnotification_db');
+            $sqlite = $db_helper->getDB();
+        } catch (Exception $e) {
+            msg($e->getMessage(), -1);
+            return;
+        }
+
+        $user = $event->data['user'];
+
+        $q = 'SELECT * FROM predicate';
+        $res = $sqlite->query($q);
+
+        $predicates = $sqlite->res2arr($res);
+
+        foreach ($predicates as $predicate) {
+            $schema = $predicate['schema'];
+            $field = $predicate['field'];
+            $operator = $predicate['operator'];
+            $days = $predicate['days'];
+            $users_and_groups = $predicate['users_and_groups'];
+            $message = $predicate['message'];
+
+            $users_set = $this->users_set($users_and_groups);
+            if (!isset($users_set[$user])) continue;
+
+            try {
+                $search = new Search();
+                $search->addSchema($schema);
+                $search->addColumn('*');
+                $result = $search->execute();
+                $result_pids = $search->getPids();
+
+                /* @var Value[] $row */
+                for ($i=0; $i<count($result); $i++) {
+                    $values = $result[$i];
+                    $pid = $result_pids[$i];
+                    $rawDate = $this->getValueByLabel($values, $field);
+                    if ($this->predicateTrue($rawDate, $operator, $days)) {
+                        $message_html = p_render('xhtml',p_get_instructions($message), $info);
+                        $event->data['notifications'][] = [
+                            'plugin' => 'structnotification',
+                            'id' => $predicate['id'] . ':'. $schema . ':' . $pid . ':'  . $rawDate,
+                            'full' => $message_html,
+                            'brief' => $message_html,
+                            'timestamp' => (int) strtotime($rawDate)
+                        ];
+                    }
+                }
+            } catch (Exception $e) {
+                msg($e->getMessage(), -1);
+                return;
+            }
+        }
     }
 
     /**
-     * [Custom event handler which performs action]
-     *
-     * Called for event:
-     *
-     * @param Doku_Event $event  event object by reference
-     * @param mixed      $param  [the parameters passed as fifth argument to register_hook() when this
-     *                           handler was registered]
-     *
-     * @return void
+     * @param array $users
+     * @param array $groups
+     * @return array
      */
-    public function handle_plugin_notification_register_source(Doku_Event $event, $param)
-    {
+    protected function users_set($user_and_groups) {
+        /** @var DokuWiki_Auth_Plugin $auth */
+        global $auth;
+
+        $user_and_groups_set = array_map('trim', explode(',', $user_and_groups));
+        $users = [];
+        $groups = [];
+        foreach ($user_and_groups_set as $user_or_group) {
+            if ($user_or_group[0] == '@') {
+                $groups[] = substr($user_or_group, 1);
+            } else {
+                $users[] = $user_or_group;
+            }
+        }
+        $set = [];
+
+        $all_users = $auth->retrieveUsers();
+        foreach ($all_users as $user => $info) {
+            if (in_array($user, $users)) {
+                $set[$user] = $info;
+            } elseif (array_intersect($groups, $info['grps'])) {
+                $set[$user] = $info;
+            }
+        }
+
+        return $set;
     }
-    public function handle_plugin_notification_gather(Doku_Event $event, $param)
-    {
-    }
-    public function handle_plugin_notification_cache_dependencies(Doku_Event $event, $param)
-    {
+
+    protected function predicateTrue($date, $operator, $days) {
+        $date = date('Y-m-d', strtotime($date));
+
+        switch ($operator) {
+            case 'before':
+                $days = date('Y-m-d', strtotime("+$days days"));
+                return $days >= $date;
+            case 'after':
+                $days = date('Y-m-d', strtotime("-$days days"));
+                return $date <= $days;
+            default:
+                return false;
+        }
     }
 
 }
