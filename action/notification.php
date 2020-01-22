@@ -95,10 +95,7 @@ class action_plugin_structnotification_notification extends DokuWiki_Action_Plug
             $users_and_groups = $predicate['users_and_groups'];
             $message = $predicate['message'];
 
-            $users_set = $this->users_set($users_and_groups);
-            if (!isset($users_set[$user])) continue;
-
-            try {
+             try {
                 $search = new Search();
                 $search->addSchema($schema);
                 $search->addColumn('*');
@@ -109,6 +106,10 @@ class action_plugin_structnotification_notification extends DokuWiki_Action_Plug
                 for ($i=0; $i<count($result); $i++) {
                     $values = $result[$i];
                     $pid = $result_pids[$i];
+
+                    $users_set = $this->users_set($users_and_groups, $values);
+                    if (!isset($users_set[$user])) continue;
+
                     $rawDate = $this->getValueByLabel($values, $field);
                     if ($this->predicateTrue($rawDate, $operator, $days)) {
                         $message = $this->replacePlaceholders($message, $values);
@@ -130,13 +131,34 @@ class action_plugin_structnotification_notification extends DokuWiki_Action_Plug
     }
 
     /**
-     * @param array $users
-     * @param array $groups
      * @return array
      */
-    protected function users_set($user_and_groups) {
+    protected function users_set($user_and_groups, $values) {
         /** @var DokuWiki_Auth_Plugin $auth */
         global $auth;
+
+        //make substitutions
+        $user_and_groups = preg_replace_callback(
+            '/@@(.*?)@@/',
+            function ($matches) use ($values) {
+                list($schema, $field) = explode('.', trim($matches[1]));
+                if (!$field) return '';
+                /* @var Value $value */
+                foreach ($values as $value) {
+                    $colLabel = $value->getColumn()->getLabel();
+                    $type = $value->getColumn()->getType();
+                    if ($colLabel == $field) {
+                        if (class_exists('\dokuwiki\plugin\structgroup\types\Group') &&
+                            $type instanceof \dokuwiki\plugin\structgroup\types\Group) {
+                            return '@' . $value->getRawValue();
+                        }
+                        return $value->getRawValue();
+                    }
+                }
+                return '';
+            },
+            $user_and_groups
+        );
 
         $user_and_groups_set = array_map('trim', explode(',', $user_and_groups));
         $users = [];
