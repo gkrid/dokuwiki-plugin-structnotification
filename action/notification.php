@@ -111,6 +111,7 @@ class action_plugin_structnotification_notification extends DokuWiki_Action_Plug
                     $pid = $result_pids[$i];
                     $rawDate = $this->getValueByLabel($values, $field);
                     if ($this->predicateTrue($rawDate, $operator, $days)) {
+                        $message = $this->replacePlaceholders($message, $values);
                         $message_html = p_render('xhtml',p_get_instructions($message), $info);
                         $event->data['notifications'][] = [
                             'plugin' => 'structnotification',
@@ -174,6 +175,20 @@ class action_plugin_structnotification_notification extends DokuWiki_Action_Plug
             default:
                 return false;
         }
+    }
+
+    protected function replacePlaceholders($message, $values) {
+        $patterns = [];
+        $replacements = [];
+        /* @var Value $value */
+        foreach ($values as $value) {
+            $schema = $value->getColumn()->getTable();
+            $label = $value->getColumn()->getLabel();
+            $patterns[] = "/@@$schema.$label@@/";
+            $replacements[] = $value->getDisplayValue();
+        }
+
+        return preg_replace($patterns, $replacements, $message);
     }
 
 }

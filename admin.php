@@ -129,7 +129,13 @@ class admin_plugin_structnotification extends DokuWiki_Admin_Plugin
 
             ptln('<tr>');
             foreach ($this->headers as $header) {
-                ptln('<td>' . $predicate[$header] . '</td>');
+                $value = $predicate[$header];
+                if ($header == 'message') {
+                    $html = p_render('xhtml',p_get_instructions($value), $info);
+                    ptln('<td>' . $html . '</td>');
+                } else {
+                    ptln('<td>' . $value . '</td>');
+                }
             }
 
             ptln('<td>');
@@ -170,11 +176,11 @@ class admin_plugin_structnotification extends DokuWiki_Admin_Plugin
         $form->addTagOpen('tr');
 
         $form->addTagOpen('td');
-        $form->addTextInput('predicate[schema]');
+        $form->addTextInput('predicate[schema]')->attr('style', 'width: 8em');
         $form->addTagClose('td');
 
         $form->addTagOpen('td');
-        $form->addTextInput('predicate[field]');
+        $form->addTextInput('predicate[field]')->attr('style', 'width: 8em');
         $form->addTagClose('td');
 
         $form->addTagOpen('td');
@@ -182,15 +188,19 @@ class admin_plugin_structnotification extends DokuWiki_Admin_Plugin
         $form->addTagClose('td');
 
         $form->addTagOpen('td');
-        $form->addTextInput('predicate[days]');
+        $form->addTextInput('predicate[days]')->attr('style', 'width: 3em');
         $form->addTagClose('td');
 
         $form->addTagOpen('td');
-        $form->addTextInput('predicate[users_and_groups]');
+        $form->addTextInput('predicate[users_and_groups]')->attr('style', 'width: 12em');
         $form->addTagClose('td');
 
         $form->addTagOpen('td');
-        $form->addTextarea('predicate[message]');
+        $form->addHTML('<div id="tool__bar"></div>');
+        $form->setHiddenField('id', $ID); //for linkwiz
+        $form->addTextarea('predicate[message]')
+            ->id('wiki__text')
+            ->attr('style', 'width: 100%; height: 10em;');
         $form->addTagClose('td');
 
         $form->addTagOpen('td');
