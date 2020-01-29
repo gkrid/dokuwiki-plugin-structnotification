@@ -112,13 +112,14 @@ class action_plugin_structnotification_notification extends DokuWiki_Action_Plug
 
                     $rawDate = $this->getValueByLabel($values, $field);
                     if ($this->predicateTrue($rawDate, $operator, $days)) {
-                        $message = $this->replacePlaceholders($message, $values);
-                        $message_html = p_render('xhtml',p_get_instructions($message), $info);
+                        $message_with_replacements = $this->replacePlaceholders($message, $values);
+                        $message_with_replacements_html = p_render('xhtml',
+                            p_get_instructions($message_with_replacements), $info);
                         $event->data['notifications'][] = [
                             'plugin' => 'structnotification',
                             'id' => $predicate['id'] . ':'. $schema . ':' . $pid . ':'  . $rawDate,
-                            'full' => $message_html,
-                            'brief' => $message_html,
+                            'full' => $message_with_replacements_html,
+                            'brief' => $message_with_replacements_html,
                             'timestamp' => (int) strtotime($rawDate)
                         ];
                     }
