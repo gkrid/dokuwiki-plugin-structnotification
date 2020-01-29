@@ -145,14 +145,25 @@ class action_plugin_structnotification_notification extends DokuWiki_Action_Plug
                 if (!$field) return '';
                 /* @var Value $value */
                 foreach ($values as $value) {
-                    $colLabel = $value->getColumn()->getLabel();
-                    $type = $value->getColumn()->getType();
+                    $column = $value->getColumn();
+                    $colLabel = $column->getLabel();
+                    $type = $column->getType();
                     if ($colLabel == $field) {
                         if (class_exists('\dokuwiki\plugin\structgroup\types\Group') &&
                             $type instanceof \dokuwiki\plugin\structgroup\types\Group) {
-                            return '@' . $value->getRawValue();
+                            if ($column->isMulti()) {
+                                return implode(',', array_map(function ($rawValue) {
+                                    return '@' . $rawValue;
+                                }, $value->getRawValue()));
+                            } else {
+                                return '@' . $value->getRawValue();
+                            }
                         }
-                        return $value->getRawValue();
+                        if ($column->isMulti()) {
+                            return implode(',', $value->getRawValue());
+                        } else {
+                            return $value->getRawValue();
+                        }
                     }
                 }
                 return '';
