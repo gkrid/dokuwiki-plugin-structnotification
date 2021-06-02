@@ -12,6 +12,7 @@ $lang['admin header schema'] = 'Schema';
 $lang['admin header field'] = 'Field';
 $lang['admin header operator'] = 'Operator';
 $lang['admin header value'] = 'Value';
+$lang['admin header filters'] = 'Filters';
 $lang['admin header users_and_groups'] = 'Users/Groups';
 $lang['admin header message'] = 'Message';
 

@@ -6,13 +6,8 @@
  * @author  Szymon Olewniczak <it@rid.pl>
  */
 
-// must be run within Dokuwiki
 use dokuwiki\plugin\struct\meta\Search;
 use dokuwiki\plugin\struct\meta\Value;
-
-if (!defined('DOKU_INC')) {
-    die();
-}
 
 class action_plugin_structnotification_notification extends DokuWiki_Action_Plugin
 {
@@ -29,8 +24,6 @@ class action_plugin_structnotification_notification extends DokuWiki_Action_Plug
         $controller->register_hook('PLUGIN_NOTIFICATION_REGISTER_SOURCE', 'AFTER', $this, 'add_notifications_source');
         $controller->register_hook('PLUGIN_NOTIFICATION_GATHER', 'AFTER', $this, 'add_notifications');
         $controller->register_hook('PLUGIN_NOTIFICATION_CACHE_DEPENDENCIES', 'AFTER', $this, 'add_notification_cache_dependencies');
-
-
     }
 
     public function add_notifications_source(Doku_Event $event)
@@ -66,7 +59,6 @@ class action_plugin_structnotification_notification extends DokuWiki_Action_Plug
         throw new Exception("column: $label not found in values");
     }
 
-
     public function add_notifications(Doku_Event $event)
     {
         if (!in_array('structnotification', $event->data['plugins'])) return;
@@ -92,6 +84,7 @@ class action_plugin_structnotification_notification extends DokuWiki_Action_Plug
             $field = $predicate['field'];
             $operator = $predicate['operator'];
             $value = $predicate['value'];
+            $filters = $predicate['filters'];
             $users_and_groups = $predicate['users_and_groups'];
             $message = $predicate['message'];
 
@@ -106,11 +99,12 @@ class action_plugin_structnotification_notification extends DokuWiki_Action_Plug
                 foreach ($special_columns as $special_column) {
                     $search->addColumn($special_column);
                 }
+                $this->addFiltersToSearch($search, $filters);
                 $result = $search->execute();
                 $result_pids = $search->getPids();
 
-                /* @var Value[] $row */
-                for ($i=0; $i<count($result); $i++) {
+                 /* @var Value[] $row */
+                for ($i = 0; $i < count($result); $i++) {
                     $values = $result[$i];
                     $pid = $result_pids[$i];
 
@@ -236,5 +230,22 @@ class action_plugin_structnotification_notification extends DokuWiki_Action_Plug
         return preg_replace($patterns, $replacements, $message);
     }
 
-}
+    /**
+     * @param Search $search
+     * @param string $filters
+     */
+    protected function addFiltersToSearch(&$search, $filters)
+    {
+        if (!$filters) return;
 
+        /** @var \helper_plugin_struct_config $confHelper */
+        $confHelper = plugin_load('helper', 'struct_config');
+
+        $filterConfigs = explode("\r\n", $filters);
+
+        foreach ($filterConfigs as $config) {
+            list($colname, $comp, $value,) = $confHelper->parseFilterLine('AND', $config);
+            $search->addFilter($colname, $value, $comp, 'AND');
+        }
+    }
+}

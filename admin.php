@@ -6,15 +6,9 @@
  * @author  Szymon Olewniczak <it@rid.pl>
  */
 
-// must be run within Dokuwiki
-if (!defined('DOKU_INC')) {
-    die();
-}
-
 class admin_plugin_structnotification extends DokuWiki_Admin_Plugin
 {
-
-    protected $headers = ['schema', 'field', 'operator', 'value', 'users_and_groups', 'message'];
+    protected $headers = ['schema', 'field', 'operator', 'value', 'filters', 'users_and_groups', 'message'];
     protected $operators = ['before', 'after', 'at'];
 
     /**
@@ -50,7 +44,6 @@ class admin_plugin_structnotification extends DokuWiki_Admin_Plugin
             return;
         }
 
-
         if ($INPUT->str('action') && $INPUT->arr('predicate') && checkSecurityToken()) {
             $predicate = $INPUT->arr('predicate');
             if ($INPUT->str('action') === 'add') {
@@ -78,7 +71,6 @@ class admin_plugin_structnotification extends DokuWiki_Admin_Plugin
                 $ok = $sqlite->query("UPDATE predicate SET $set WHERE id=?", $predicate);
                 if(!$ok) msg('failed to update predicate', -1);
             }
-
 
             if ($ok) send_redirect(wl($ID, array('do' => 'admin', 'page' => 'structnotification'), true, '&'));
         }
@@ -189,6 +181,10 @@ class admin_plugin_structnotification extends DokuWiki_Admin_Plugin
 
         $form->addTagOpen('td');
         $form->addTextInput('predicate[value]')->attr('style', 'width: 12em');
+        $form->addTagClose('td');
+
+        $form->addTagOpen('td');
+        $form->addTextarea('predicate[filters]')->attr('style', 'width: 12em; height: 5em;');
         $form->addTagClose('td');
 
         $form->addTagOpen('td');
