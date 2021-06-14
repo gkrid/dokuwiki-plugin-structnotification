@@ -139,6 +139,11 @@ class action_plugin_structnotification_notification extends DokuWiki_Action_Plug
         /** @var DokuWiki_Auth_Plugin $auth */
         global $auth;
 
+        // $auth is missing in CLI context
+        if (is_null($auth)) {
+            auth_setup();
+        }
+
         //make substitutions
         $user_and_groups = preg_replace_callback(
             '/@@(.*?)@@/',
