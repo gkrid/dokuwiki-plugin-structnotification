@@ -99,6 +99,11 @@ class action_plugin_structnotification_notification extends DokuWiki_Action_Plug
                 $search = new Search();
                 $search->addSchema($schema);
                 $search->addColumn('*');
+                // add special columns
+                $special_columns = ['%pageid%', '%title%', '%lastupdate%', '%lasteditor%', '%lastsummary%', '%rowid%'];
+                foreach ($special_columns as $special_column) {
+                    $search->addColumn($special_column);
+                }
                 $result = $search->execute();
                 $result_pids = $search->getPids();
 
