@@ -1,7 +1,7 @@
 base   structnotification
 author Szymon Olewniczak
 email  it@rid.pl
-date   2022-10-20
+date   2023-11-21
 name   structnotification plugin
 desc   Notifi about upcoming events from struct tabes.
 url    https://dokuwiki.org/plugin:structnotification

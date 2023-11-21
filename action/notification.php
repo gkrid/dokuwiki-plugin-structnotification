@@ -91,14 +91,16 @@ class action_plugin_structnotification_notification extends DokuWiki_Action_Plug
             $schema = $predicate['schema'];
             $field = $predicate['field'];
             $operator = $predicate['operator'];
-            $days = $predicate['days'];
+            $value = $predicate['value'];
             $users_and_groups = $predicate['users_and_groups'];
             $message = $predicate['message'];
 
              try {
                 $search = new Search();
-                $search->addSchema($schema);
-                $search->addColumn('*');
+                foreach (explode(',', $schema) as $table) {
+                    $search->addSchema($table);
+                    $search->addColumn($table . '.*');
+                }
                 // add special columns
                 $special_columns = ['%pageid%', '%title%', '%lastupdate%', '%lasteditor%', '%lastsummary%', '%rowid%'];
                 foreach ($special_columns as $special_column) {
@@ -116,7 +118,7 @@ class action_plugin_structnotification_notification extends DokuWiki_Action_Plug
                     if (!isset($users_set[$user])) continue;
 
                     $rawDate = $this->getValueByLabel($values, $field);
-                    if ($this->predicateTrue($rawDate, $operator, $days)) {
+                    if ($this->predicateTrue($rawDate, $operator, $value)) {
                         $message_with_replacements = $this->replacePlaceholders($message, $values);
                         $message_with_replacements_html = p_render('xhtml',
                             p_get_instructions($message_with_replacements), $info);
@@ -201,16 +203,20 @@ class action_plugin_structnotification_notification extends DokuWiki_Action_Plug
         return $set;
     }
 
-    protected function predicateTrue($date, $operator, $days) {
+    protected function predicateTrue($date, $operator, $value) {
         $date = date('Y-m-d', strtotime($date));
 
         switch ($operator) {
             case 'before':
-                $days = date('Y-m-d', strtotime("+$days days"));
+                $days = date('Y-m-d', strtotime("+$value days"));
                 return $days >= $date;
             case 'after':
-                $days = date('Y-m-d', strtotime("-$days days"));
+                $days = date('Y-m-d', strtotime("-$value days"));
                 return $date <= $days;
+            case 'at':
+                $now = new DateTime();
+                $at = new DateTime(date($value, strtotime($date)));
+                return $now >= $at;
             default:
                 return false;
         }

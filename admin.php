@@ -14,8 +14,8 @@ if (!defined('DOKU_INC')) {
 class admin_plugin_structnotification extends DokuWiki_Admin_Plugin
 {
 
-    protected $headers = ['schema', 'field', 'operator', 'days', 'users_and_groups', 'message'];
-    protected $operators = ['before', 'after'];
+    protected $headers = ['schema', 'field', 'operator', 'value', 'users_and_groups', 'message'];
+    protected $operators = ['before', 'after', 'at'];
 
     /**
      * @return int sort number in admin menu
@@ -188,7 +188,7 @@ class admin_plugin_structnotification extends DokuWiki_Admin_Plugin
         $form->addTagClose('td');
 
         $form->addTagOpen('td');
-        $form->addTextInput('predicate[days]')->attr('style', 'width: 3em');
+        $form->addTextInput('predicate[value]')->attr('style', 'width: 12em');
         $form->addTagClose('td');
 
         $form->addTagOpen('td');
@@ -236,12 +236,8 @@ class admin_plugin_structnotification extends DokuWiki_Admin_Plugin
             $errors[] = 'val operator blank';
         }
 
-        if (blank($predicate['days'])) {
-            $errors[] = 'val days blank';
-        }
-
-        if (!preg_match('/^[0-9]*$/', $predicate['days'])) {
-            $errors[] = 'val days integer';
+        if (blank($predicate['value'])) {
+            $errors[] = 'val value blank';
         }
 
         if (blank($predicate['users_and_groups'])) {
