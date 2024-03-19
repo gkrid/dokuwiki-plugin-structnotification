@@ -95,7 +95,7 @@ class admin_plugin_structnotification extends AdminPlugin
         }
 
         echo '<h1>' . $this->getLang('menu') . '</h1>';
-        echo '<table>';
+        echo '<div class="table"><table>';
 
         echo '<tr>';
         foreach ($this->headers as $header) {
@@ -156,7 +156,7 @@ class admin_plugin_structnotification extends AdminPlugin
         if (!$INPUT->has('edit')) {
             echo $this->form();
         }
-        echo '</table>';
+        echo '</table></div>';
     }
 
     protected function form($action = 'add')
@@ -167,11 +167,11 @@ class admin_plugin_structnotification extends AdminPlugin
         $form->addTagOpen('tr');
 
         $form->addTagOpen('td');
-        $form->addTextInput('predicate[schema]')->attr('style', 'width: 8em');
+        $form->addTextInput('predicate[schema]')->attr('size', 10);
         $form->addTagClose('td');
 
         $form->addTagOpen('td');
-        $form->addTextInput('predicate[field]')->attr('style', 'width: 8em');
+        $form->addTextInput('predicate[field]')->attr('size', 10);
         $form->addTagClose('td');
 
         $form->addTagOpen('td');
@@ -179,15 +179,19 @@ class admin_plugin_structnotification extends AdminPlugin
         $form->addTagClose('td');
 
         $form->addTagOpen('td');
-        $form->addTextInput('predicate[value]')->attr('style', 'width: 12em');
+        $form->addTextInput('predicate[value]')->attr('size', 10);
         $form->addTagClose('td');
 
         $form->addTagOpen('td');
-        $form->addTextarea('predicate[filters]')->attr('style', 'width: 12em; height: 5em;');
+        $form->addTextarea('predicate[filters]')
+            ->attrs([
+                'cols' => '12',
+                'rows' => '5'
+            ]);
         $form->addTagClose('td');
 
         $form->addTagOpen('td');
-        $form->addTextInput('predicate[users_and_groups]')->attr('style', 'width: 12em');
+        $form->addTextInput('predicate[users_and_groups]')->attr('size', 10);
         $form->addTagClose('td');
 
         $form->addTagOpen('td');
