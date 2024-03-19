@@ -1,4 +1,5 @@
 <?php
+
 /**
  * DokuWiki Plugin structnotification (Action Component)
  *
@@ -6,32 +7,40 @@
  * @author  Szymon Olewniczak <it@rid.pl>
  */
 
+use dokuwiki\Extension\ActionPlugin;
+use dokuwiki\Extension\EventHandler;
+use dokuwiki\Extension\Event;
+use dokuwiki\plugin\structgroup\types\Group;
 use dokuwiki\plugin\struct\meta\Search;
 use dokuwiki\plugin\struct\meta\Value;
 
-class action_plugin_structnotification_notification extends DokuWiki_Action_Plugin
+class action_plugin_structnotification_notification extends ActionPlugin
 {
-
     /**
      * Registers a callback function for a given event
      *
-     * @param Doku_Event_Handler $controller DokuWiki's event controller object
+     * @param EventHandler $controller DokuWiki's event controller object
      *
      * @return void
      */
-    public function register(Doku_Event_Handler $controller)
+    public function register(EventHandler $controller)
     {
-        $controller->register_hook('PLUGIN_NOTIFICATION_REGISTER_SOURCE', 'AFTER', $this, 'add_notifications_source');
-        $controller->register_hook('PLUGIN_NOTIFICATION_GATHER', 'AFTER', $this, 'add_notifications');
-        $controller->register_hook('PLUGIN_NOTIFICATION_CACHE_DEPENDENCIES', 'AFTER', $this, 'add_notification_cache_dependencies');
+        $controller->register_hook('PLUGIN_NOTIFICATION_REGISTER_SOURCE', 'AFTER', $this, 'addNotificationsSource');
+        $controller->register_hook('PLUGIN_NOTIFICATION_GATHER', 'AFTER', $this, 'addNotifications');
+        $controller->register_hook(
+            'PLUGIN_NOTIFICATION_CACHE_DEPENDENCIES',
+            'AFTER',
+            $this,
+            'addNotificationCacheDependencies'
+        );
     }
 
-    public function add_notifications_source(Doku_Event $event)
+    public function addNotificationsSource(Event $event)
     {
         $event->data[] = 'structnotification';
     }
 
-    public function add_notification_cache_dependencies(Doku_Event $event)
+    public function addNotificationCacheDependencies(Event $event)
     {
         if (!in_array('structnotification', $event->data['plugins'])) return;
 
@@ -59,7 +68,7 @@ class action_plugin_structnotification_notification extends DokuWiki_Action_Plug
         throw new Exception("column: $label not found in values");
     }
 
-    public function add_notifications(Doku_Event $event)
+    public function addNotifications(Event $event)
     {
         if (!in_array('structnotification', $event->data['plugins'])) return;
 
@@ -88,7 +97,7 @@ class action_plugin_structnotification_notification extends DokuWiki_Action_Plug
             $users_and_groups = $predicate['users_and_groups'];
             $message = $predicate['message'];
 
-             try {
+            try {
                 $search = new Search();
                 foreach (explode(',', $schema) as $table) {
                     $search->addSchema($table);
@@ -102,23 +111,28 @@ class action_plugin_structnotification_notification extends DokuWiki_Action_Plug
                 $this->addFiltersToSearch($search, $filters);
                 $result = $search->execute();
                 $result_pids = $search->getPids();
+                /* @var Value[] $row */
+                $counter = count($result);
 
-                 /* @var Value[] $row */
-                for ($i = 0; $i < count($result); $i++) {
+                /* @var Value[] $row */
+                for ($i = 0; $i < $counter; $i++) {
                     $values = $result[$i];
                     $pid = $result_pids[$i];
 
-                    $users_set = $this->users_set($users_and_groups, $values);
+                    $users_set = $this->usersSet($users_and_groups, $values);
                     if (!isset($users_set[$user])) continue;
 
                     $rawDate = $this->getValueByLabel($values, $field);
                     if ($this->predicateTrue($rawDate, $operator, $value)) {
                         $message_with_replacements = $this->replacePlaceholders($message, $values);
-                        $message_with_replacements_html = p_render('xhtml',
-                            p_get_instructions($message_with_replacements), $info);
+                        $message_with_replacements_html = p_render(
+                            'xhtml',
+                            p_get_instructions($message_with_replacements),
+                            $info
+                        );
                         $event->data['notifications'][] = [
                             'plugin' => 'structnotification',
-                            'id' => $predicate['id'] . ':'. $schema . ':' . $pid . ':'  . $rawDate,
+                            'id' => $predicate['id'] . ':' . $schema . ':' . $pid . ':'  . $rawDate,
                             'full' => $message_with_replacements_html,
                             'brief' => $message_with_replacements_html,
                             'timestamp' => (int) strtotime($rawDate)
@@ -135,7 +149,8 @@ class action_plugin_structnotification_notification extends DokuWiki_Action_Plug
     /**
      * @return array
      */
-    protected function users_set($user_and_groups, $values) {
+    protected function usersSet($user_and_groups, $values)
+    {
         /** @var DokuWiki_Auth_Plugin $auth */
         global $auth;
 
@@ -148,7 +163,7 @@ class action_plugin_structnotification_notification extends DokuWiki_Action_Plug
         $user_and_groups = preg_replace_callback(
             '/@@(.*?)@@/',
             function ($matches) use ($values) {
-                list($schema, $field) = explode('.', trim($matches[1]));
+                [$schema, $field] = explode('.', trim($matches[1]));
                 if (!$field) return '';
                 /* @var Value $value */
                 foreach ($values as $value) {
@@ -156,12 +171,15 @@ class action_plugin_structnotification_notification extends DokuWiki_Action_Plug
                     $colLabel = $column->getLabel();
                     $type = $column->getType();
                     if ($colLabel == $field) {
-                        if (class_exists('\dokuwiki\plugin\structgroup\types\Group') &&
-                            $type instanceof \dokuwiki\plugin\structgroup\types\Group) {
+                        if (
+                            class_exists('\dokuwiki\plugin\structgroup\types\Group') &&
+                            $type instanceof Group
+                        ) {
                             if ($column->isMulti()) {
-                                return implode(',', array_map(function ($rawValue) {
-                                    return '@' . $rawValue;
-                                }, $value->getRawValue()));
+                                return implode(
+                                    ',',
+                                    array_map(static fn($rawValue) => '@' . $rawValue, $value->getRawValue())
+                                );
                             } else {
                                 return '@' . $value->getRawValue();
                             }
@@ -202,7 +220,8 @@ class action_plugin_structnotification_notification extends DokuWiki_Action_Plug
         return $set;
     }
 
-    protected function predicateTrue($date, $operator, $value) {
+    protected function predicateTrue($date, $operator, $value)
+    {
         $date = date('Y-m-d', strtotime($date));
 
         switch ($operator) {
@@ -221,7 +240,8 @@ class action_plugin_structnotification_notification extends DokuWiki_Action_Plug
         }
     }
 
-    protected function replacePlaceholders($message, $values) {
+    protected function replacePlaceholders($message, $values)
+    {
         $patterns = [];
         $replacements = [];
         /* @var Value $value */
@@ -249,7 +269,7 @@ class action_plugin_structnotification_notification extends DokuWiki_Action_Plug
         $filterConfigs = explode("\r\n", $filters);
 
         foreach ($filterConfigs as $config) {
-            list($colname, $comp, $value,) = $confHelper->parseFilterLine('AND', $config);
+            [$colname, $comp, $value, ] = $confHelper->parseFilterLine('AND', $config);
             $search->addFilter($colname, $value, $comp, 'AND');
         }
     }
