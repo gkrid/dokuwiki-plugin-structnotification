@@ -1,0 +1,1 @@
+ALTER TABLE predicate ADD COLUMN filters TEXT DEFAULT '';

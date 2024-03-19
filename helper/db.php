@@ -1,18 +1,14 @@
 <?php
+
+use dokuwiki\Extension\Plugin;
+
 /**
- * DokuWiki Plugin watchcycle (Helper Component)
+ * DokuWiki Plugin structnotification (Helper Component)
  *
  * @license GPL 2 http://www.gnu.org/licenses/gpl-2.0.html
  * @author  Szymon Olewniczak <dokuwiki@cosmocode.de>
  */
-
-// must be run within Dokuwiki
-
-if (!defined('DOKU_INC')) {
-    die();
-}
-
-class helper_plugin_structnotification_db extends DokuWiki_Plugin
+class helper_plugin_structnotification_db extends Plugin
 {
     /** @var helper_plugin_sqlite */
     protected $sqlite;
@@ -32,7 +28,6 @@ class helper_plugin_structnotification_db extends DokuWiki_Plugin
      */
     protected function init()
     {
-        /** @var helper_plugin_sqlite $sqlite */
         $this->sqlite = plugin_load('helper', 'sqlite');
         if (!$this->sqlite) {
             if (defined('DOKU_UNITTEST')) {
@@ -56,12 +51,11 @@ class helper_plugin_structnotification_db extends DokuWiki_Plugin
                 throw new \Exception('Couldn\'t init sqlite.');
             }
             $this->sqlite = null;
-            return;
         }
     }
 
     /**
-     * @return helper_plugin_sqlite|null
+     * @return helper_plugin_sqlite|null|bool
      */
     public function getDB()
     {
@@ -76,25 +70,4 @@ class helper_plugin_structnotification_db extends DokuWiki_Plugin
         }
         return $this->sqlite;
     }
-
-    /**
-     * Completely remove the database and reinitialize it
-     *
-     * You do not want to call this except for testing!
-     */
-    public function resetDB()
-    {
-        if (!$this->sqlite) {
-            return;
-        }
-        $file = $this->sqlite->getAdapter()->getDbFile();
-        if (!$file) {
-            return;
-        }
-        unlink($file);
-        clearstatcache(true, $file);
-        $this->init();
-    }
 }
-
-// vim:ts=4:sw=4:et:
